@@ -423,13 +423,13 @@ export default function Editor() {
   }
 
   const exportPng = async () => {
-    if (!canvasRef.current || !viewportRef.current) return
+    if (!viewportRef.current) return
     const bgColor = theme === 'dark' ? '#020617' : '#f0f9ff'
     const noExportFilter = (node) => !node?.dataset?.noExport
 
     if (tables.length === 0) {
       try {
-        const url = await toPng(canvasRef.current, { cacheBust: true, pixelRatio: 3, backgroundColor: bgColor, filter: noExportFilter })
+        const url = await toPng(viewportRef.current, { cacheBust: true, pixelRatio: 3, backgroundColor: bgColor, filter: noExportFilter })
         const a = document.createElement('a'); a.download = 'diagrama.png'; a.href = url; a.click()
         pushToast('PNG exportado')
       } catch { pushToast('No se pudo exportar') }
@@ -438,32 +438,30 @@ export default function Editor() {
 
     const prevViewport = { ...viewport }
     try {
-      const pad = 60
+      const pad = 48
       const minX = Math.min(...tables.map((t) => t.x)) - pad
       const minY = Math.min(...tables.map((t) => t.y)) - pad
       const maxX = Math.max(...tables.map((t) => t.x + t.width)) + pad
       const maxY = Math.max(...tables.map((t) => t.y + t.height)) + pad
 
       const { width: vpW, height: vpH } = viewportSize
-      const fitZoomX = vpW / (maxX - minX)
-      const fitZoomY = vpH / (maxY - minY)
-      const exportZoom = Math.min(Math.max(fitZoomX, fitZoomY) * 2, 3)
+      // Fit all content into the viewport, capped at 1.5 so text stays readable
+      const fitZoom = Math.min(vpW / (maxX - minX), vpH / (maxY - minY), 1.5)
+      // Center the diagram in the viewport
+      const exportX = (vpW - (maxX - minX) * fitZoom) / 2 - minX * fitZoom
+      const exportY = (vpH - (maxY - minY) * fitZoom) / 2 - minY * fitZoom
 
-      const exportX = -minX * exportZoom + pad
-      const exportY = -minY * exportZoom + pad
-      const exportW = Math.round((maxX - minX) * exportZoom)
-      const exportH = Math.round((maxY - minY) * exportZoom)
-
-      setViewport({ x: exportX, y: exportY, zoom: exportZoom })
+      setViewport({ x: exportX, y: exportY, zoom: fitZoom })
+      // Wait two animation frames for React to re-render at new viewport
       await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)))
 
+      // Capture the viewport at its natural size — no explicit width/height so the
+      // SVG relation layer renders at 100% and isn't clipped by a mismatched canvas.
+      // pixelRatio:3 provides high resolution regardless of zoom level.
       const url = await toPng(viewportRef.current, {
         cacheBust: true,
-        pixelRatio: 2,
+        pixelRatio: 3,
         backgroundColor: bgColor,
-        width: exportW,
-        height: exportH,
-        style: { overflow: 'hidden' },
         filter: noExportFilter,
       })
       const a = document.createElement('a'); a.download = 'diagrama.png'; a.href = url; a.click()
