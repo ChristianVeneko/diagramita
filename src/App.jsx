@@ -2633,7 +2633,7 @@ function DiagramEditor() {
           className="rounded-md border border-slate-500 px-3 py-1.5 text-sm transition hover:border-cyan-400 hover:text-cyan-300"
         >
           Importar Mermaid
-        </button>xxx
+        </button>
 
         <button
           type="button"
