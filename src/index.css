@@ -14,12 +14,20 @@
     min-height: 100vh;
     font-family: 'Space Grotesk', 'Avenir Next', sans-serif;
     text-rendering: geometricPrecision;
+  }
+
+  body.editor-active {
     overflow: hidden;
   }
 
   #root {
     width: 100vw;
+    min-height: 100vh;
+  }
+
+  body.editor-active #root {
     height: 100vh;
+    overflow: hidden;
   }
 
   button,

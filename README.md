@@ -1,33 +1,55 @@
-# Canva MER
+# Diagramita
 
-Editor visual tipo Canva para crear diagramas ER y de clases con React + Tailwind.
+Editor de diagramas entidad-relación y de clases UML en el browser. Sin cuenta, sin instalación, sin backend.
 
-## Scripts
+## Qué hace
 
-- `npm run dev`: inicia el entorno de desarrollo.
-- `npm run build`: genera build de produccion.
-- `npm run lint`: ejecuta ESLint.
-
-## Funcionalidades principales
-
-- Canvas interactivo con zoom, pan y grid.
-- Creacion de tablas con campos MySQL y constraints.
-- Edicion de campos por doble clic.
-- Drag and drop de tablas, resize y seleccion multiple.
-- Relaciones 1:1, 1:N y N:M (con tabla pivote automatica).
-- Personalizacion de colores por tabla y relaciones.
-- Tema claro/oscuro.
-- Exportacion SQL (vista previa, copiar y descargar).
-- Importacion de diagramas desde Mermaid ER y Class Diagram.
-- Opcion de modo Clases con visualizacion UML (atributos y metodos).
-- Exportacion de diagrama a PNG.
-- Guardado/carga via localStorage.
-- Minimap para diagramas grandes.
-- Undo/Redo con `Ctrl+Z` y `Ctrl+Shift+Z`.
+- Arrastrá, conectá y editá tablas directo en el canvas
+- Dos modos: **ER** (entidad-relación, MySQL) y **UML de clases**
+- Relaciones 1:1, 1:N y N:M — las N:M crean la tabla pivote automáticamente
+- Importá diagramas Mermaid (`erDiagram` o `classDiagram`) con auto-layout vía Dagre
+- Exportá SQL (`CREATE TABLE` + `ALTER TABLE` ordenados por dependencias) o PNG de alta resolución
+- Historial de 100 pasos (Ctrl+Z / Ctrl+Y)
+- Copy/paste de tablas (Ctrl+C / Ctrl+V)
+- 5 plantillas listas: E-Commerce, Blog, Autenticación, Universidad, Inventario
+- Modo oscuro por defecto — paleta personalizable por tabla
+- Minimap y fit-to-view
+- 100% client-side — los datos se guardan en localStorage
 
 ## Stack
 
-- React (SPA)
-- React hooks (`useState`, `useReducer`, `useContext`)
-- SVG + HTML/CSS para render custom del diagrama
-- Tailwind CSS
+- React 19 + Vite
+- Tailwind CSS v4
+- `@dagrejs/dagre` — auto-layout
+- `html-to-image` — exportar PNG
+- `react-router-dom` — routing con HashRouter
+
+## Desarrollo
+
+```bash
+npm install
+npm run dev       # localhost:5173
+npm run build
+npm run lint
+```
+
+## Estructura
+
+```
+src/
+  constants.js          # Constantes globales
+  lib/                  # Utilidades puras (sin React)
+    diagram.js          # Helpers de datos
+    mermaid.js          # Parser de Mermaid
+    sql.js              # Generador de SQL
+    layout.js           # Auto-layout con Dagre
+  store/                # Estado global
+    reducer.js
+    DiagramContext.jsx
+  data/
+    templates.js        # Plantillas Mermaid
+  components/           # Componentes UI
+  pages/
+    Landing.jsx
+    Editor.jsx
+```

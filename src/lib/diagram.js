@@ -166,7 +166,7 @@ export function ensureTargetFieldForImportedRelation(state, sourceTableId, targe
 }
 
 export function sanitizeDiagram(diagram) {
-  const base = { tables: [], relations: [], diagramType: 'er', theme: 'light', snapToGrid: true }
+  const base = { tables: [], relations: [], diagramType: 'er', theme: 'dark', snapToGrid: true }
   if (!diagram || typeof diagram !== 'object') return base
 
   const tables = Array.isArray(diagram.tables)
@@ -228,7 +228,7 @@ export function sanitizeDiagram(diagram) {
     tables,
     relations,
     diagramType: diagram.diagramType === 'class' ? 'class' : 'er',
-    theme: diagram.theme === 'dark' ? 'dark' : 'light',
+    theme: diagram.theme === 'light' ? 'light' : 'dark',
     snapToGrid: diagram.snapToGrid !== false,
   }
 }

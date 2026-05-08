@@ -423,15 +423,54 @@ export default function Editor() {
   }
 
   const exportPng = async () => {
-    if (!canvasRef.current) return
+    if (!canvasRef.current || !viewportRef.current) return
+    const bgColor = theme === 'dark' ? '#020617' : '#f0f9ff'
+
+    if (tables.length === 0) {
+      try {
+        const url = await toPng(canvasRef.current, { cacheBust: true, pixelRatio: 3, backgroundColor: bgColor })
+        const a = document.createElement('a'); a.download = 'diagrama.png'; a.href = url; a.click()
+        pushToast('PNG exportado')
+      } catch { pushToast('No se pudo exportar') }
+      return
+    }
+
+    const prevViewport = { ...viewport }
     try {
-      const url = await toPng(canvasRef.current, { cacheBust: true, pixelRatio: 2, backgroundColor: theme === 'dark' ? '#020617' : '#f0f9ff' })
-      const a = document.createElement('a')
-      a.download = 'diagrama.png'
-      a.href = url
-      a.click()
+      // Compute bounding box of all tables in world space
+      const pad = 60
+      const minX = Math.min(...tables.map((t) => t.x)) - pad
+      const minY = Math.min(...tables.map((t) => t.y)) - pad
+      const maxX = Math.max(...tables.map((t) => t.x + t.width)) + pad
+      const maxY = Math.max(...tables.map((t) => t.y + t.height)) + pad
+
+      const { width: vpW, height: vpH } = viewportSize
+      const fitZoomX = vpW / (maxX - minX)
+      const fitZoomY = vpH / (maxY - minY)
+      // Use 2x the fit zoom (high quality), capped at 3 to avoid huge images
+      const exportZoom = Math.min(Math.max(fitZoomX, fitZoomY) * 2, 3)
+
+      const exportX = -minX * exportZoom + pad
+      const exportY = -minY * exportZoom + pad
+      const exportW = Math.round((maxX - minX) * exportZoom)
+      const exportH = Math.round((maxY - minY) * exportZoom)
+
+      setViewport({ x: exportX, y: exportY, zoom: exportZoom })
+      // Wait two animation frames for React to re-render at new viewport
+      await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)))
+
+      const url = await toPng(viewportRef.current, {
+        cacheBust: true,
+        pixelRatio: 2,
+        backgroundColor: bgColor,
+        width: exportW,
+        height: exportH,
+        style: { overflow: 'hidden' },
+      })
+      const a = document.createElement('a'); a.download = 'diagrama.png'; a.href = url; a.click()
       pushToast('PNG exportado')
     } catch { pushToast('No se pudo exportar') }
+    finally { setViewport(prevViewport) }
   }
 
   const copySql = async () => {
