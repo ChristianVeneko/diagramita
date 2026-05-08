@@ -425,10 +425,11 @@ export default function Editor() {
   const exportPng = async () => {
     if (!canvasRef.current || !viewportRef.current) return
     const bgColor = theme === 'dark' ? '#020617' : '#f0f9ff'
+    const noExportFilter = (node) => !node?.dataset?.noExport
 
     if (tables.length === 0) {
       try {
-        const url = await toPng(canvasRef.current, { cacheBust: true, pixelRatio: 3, backgroundColor: bgColor })
+        const url = await toPng(canvasRef.current, { cacheBust: true, pixelRatio: 3, backgroundColor: bgColor, filter: noExportFilter })
         const a = document.createElement('a'); a.download = 'diagrama.png'; a.href = url; a.click()
         pushToast('PNG exportado')
       } catch { pushToast('No se pudo exportar') }
@@ -437,7 +438,6 @@ export default function Editor() {
 
     const prevViewport = { ...viewport }
     try {
-      // Compute bounding box of all tables in world space
       const pad = 60
       const minX = Math.min(...tables.map((t) => t.x)) - pad
       const minY = Math.min(...tables.map((t) => t.y)) - pad
@@ -447,7 +447,6 @@ export default function Editor() {
       const { width: vpW, height: vpH } = viewportSize
       const fitZoomX = vpW / (maxX - minX)
       const fitZoomY = vpH / (maxY - minY)
-      // Use 2x the fit zoom (high quality), capped at 3 to avoid huge images
       const exportZoom = Math.min(Math.max(fitZoomX, fitZoomY) * 2, 3)
 
       const exportX = -minX * exportZoom + pad
@@ -456,7 +455,6 @@ export default function Editor() {
       const exportH = Math.round((maxY - minY) * exportZoom)
 
       setViewport({ x: exportX, y: exportY, zoom: exportZoom })
-      // Wait two animation frames for React to re-render at new viewport
       await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)))
 
       const url = await toPng(viewportRef.current, {
@@ -466,6 +464,7 @@ export default function Editor() {
         width: exportW,
         height: exportH,
         style: { overflow: 'hidden' },
+        filter: noExportFilter,
       })
       const a = document.createElement('a'); a.download = 'diagrama.png'; a.href = url; a.click()
       pushToast('PNG exportado')
@@ -689,21 +688,25 @@ export default function Editor() {
           )}
         </div>
 
-        <Minimap
-          minimapData={minimapData}
-          minimapScale={minimapScale}
-          tables={tables}
-          viewportRectInWorld={viewportRectInWorld}
-          onPointerDown={handleMinimapClick}
-          getMinimumTableHeight={getMinimumTableHeight}
-        />
-
-        {selectedTable && <ColorPanel table={selectedTable} />}
-        {selectedRelation && (
-          <RelationPanel
-            relation={selectedRelation}
-            onDelete={() => { apply({ type: 'DELETE_RELATION', relationId: selectedRelation.id }); setSelectedRelationId(null) }}
+        <div data-no-export>
+          <Minimap
+            minimapData={minimapData}
+            minimapScale={minimapScale}
+            tables={tables}
+            viewportRectInWorld={viewportRectInWorld}
+            onPointerDown={handleMinimapClick}
+            getMinimumTableHeight={getMinimumTableHeight}
           />
+        </div>
+
+        {selectedTable && <div data-no-export><ColorPanel table={selectedTable} /></div>}
+        {selectedRelation && (
+          <div data-no-export>
+            <RelationPanel
+              relation={selectedRelation}
+              onDelete={() => { apply({ type: 'DELETE_RELATION', relationId: selectedRelation.id }); setSelectedRelationId(null) }}
+            />
+          </div>
         )}
       </main>
 
