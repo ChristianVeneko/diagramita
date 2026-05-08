@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm create *)",
+      "PowerShell(cd C:/Users/chris/Desktop/canva-mer && npx create-vite@latest . --template react --yes 2>&1; echo \"Exit: $LASTEXITCODE\")",
+      "PowerShell(Write-Host \"y\" | npx create-vite@latest C:/Users/chris/Desktop/canva-mer --template react 2>&1)",
+      "Bash(cp -r \"C:/Users/chris/Desktop/canva-mer/C/Users/chris/Desktop/canva-mer/.\" \"C:/Users/chris/Desktop/canva-mer/\")",
+      "Bash(rm -rf \"C:/Users/chris/Desktop/canva-mer/C\")",
+      "Bash(npm install *)",
+      "Bash(npx tailwindcss *)"
+    ]
+  }
+}
