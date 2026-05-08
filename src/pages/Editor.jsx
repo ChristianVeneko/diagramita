@@ -637,6 +637,7 @@ export default function Editor() {
             selectedRelationId={selectedRelationId}
             onSelectRelation={(id) => { setSelectedRelationId(id); setSelectedTableIds([]) }}
             theme={theme}
+            zoom={viewport.zoom}
           />
 
           {/* Tables */}
