@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { toPng } from 'html-to-image'
+import { toPng, toSvg, toJpeg } from 'html-to-image'
+import { jsPDF } from 'jspdf'
 import { useDiagram } from '../store/DiagramContext.jsx'
 import { importMermaidToDiagram, importMermaidClassToDiagram } from '../lib/mermaid.js'
 import { generateSql } from '../lib/sql.js'
@@ -422,51 +423,109 @@ export default function Editor() {
     }
   }
 
+  const buildExportViewport = () => {
+    const pad = 48
+    const minX = Math.min(...tables.map((t) => t.x)) - pad
+    const minY = Math.min(...tables.map((t) => t.y)) - pad
+    const maxX = Math.max(...tables.map((t) => t.x + t.width)) + pad
+    const maxY = Math.max(...tables.map((t) => t.y + t.height)) + pad
+    const { width: vpW, height: vpH } = viewportSize
+    const fitZoom = Math.min(vpW / (maxX - minX), vpH / (maxY - minY), 1.5)
+    return {
+      x: (vpW - (maxX - minX) * fitZoom) / 2 - minX * fitZoom,
+      y: (vpH - (maxY - minY) * fitZoom) / 2 - minY * fitZoom,
+      zoom: fitZoom,
+    }
+  }
+
   const exportPng = async () => {
     if (!viewportRef.current) return
     const bgColor = theme === 'dark' ? '#020617' : '#f0f9ff'
     const noExportFilter = (node) => !node?.dataset?.noExport
-
-    if (tables.length === 0) {
-      try {
-        const url = await toPng(viewportRef.current, { cacheBust: true, pixelRatio: 3, backgroundColor: bgColor, filter: noExportFilter })
-        const a = document.createElement('a'); a.download = 'diagrama.png'; a.href = url; a.click()
-        pushToast('PNG exportado')
-      } catch { pushToast('No se pudo exportar') }
-      return
-    }
-
     const prevViewport = { ...viewport }
     try {
-      const pad = 48
-      const minX = Math.min(...tables.map((t) => t.x)) - pad
-      const minY = Math.min(...tables.map((t) => t.y)) - pad
-      const maxX = Math.max(...tables.map((t) => t.x + t.width)) + pad
-      const maxY = Math.max(...tables.map((t) => t.y + t.height)) + pad
-
-      const { width: vpW, height: vpH } = viewportSize
-      // Fit all content into the viewport, capped at 1.5 so text stays readable
-      const fitZoom = Math.min(vpW / (maxX - minX), vpH / (maxY - minY), 1.5)
-      // Center the diagram in the viewport
-      const exportX = (vpW - (maxX - minX) * fitZoom) / 2 - minX * fitZoom
-      const exportY = (vpH - (maxY - minY) * fitZoom) / 2 - minY * fitZoom
-
-      setViewport({ x: exportX, y: exportY, zoom: fitZoom })
-      // Wait two animation frames for React to re-render at new viewport
+      if (tables.length > 0) setViewport(buildExportViewport())
       await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)))
-
-      // Capture the viewport at its natural size — no explicit width/height so the
-      // SVG relation layer renders at 100% and isn't clipped by a mismatched canvas.
-      // pixelRatio:3 provides high resolution regardless of zoom level.
-      const url = await toPng(viewportRef.current, {
-        cacheBust: true,
-        pixelRatio: 3,
-        backgroundColor: bgColor,
-        filter: noExportFilter,
-      })
+      const url = await toPng(viewportRef.current, { cacheBust: true, pixelRatio: 3, backgroundColor: bgColor, filter: noExportFilter })
       const a = document.createElement('a'); a.download = 'diagrama.png'; a.href = url; a.click()
       pushToast('PNG exportado')
-    } catch { pushToast('No se pudo exportar') }
+    } catch { pushToast('No se pudo exportar PNG') }
+    finally { if (tables.length > 0) setViewport(prevViewport) }
+  }
+
+  const exportSvg = async () => {
+    if (!viewportRef.current) return
+    const bgColor = theme === 'dark' ? '#020617' : '#f0f9ff'
+    const noExportFilter = (node) => !node?.dataset?.noExport
+    const prevViewport = { ...viewport }
+    try {
+      if (tables.length > 0) setViewport(buildExportViewport())
+      await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)))
+      const url = await toSvg(viewportRef.current, { cacheBust: true, backgroundColor: bgColor, filter: noExportFilter })
+      const a = document.createElement('a'); a.download = 'diagrama.svg'; a.href = url; a.click()
+      pushToast('SVG exportado')
+    } catch { pushToast('No se pudo exportar SVG') }
+    finally { if (tables.length > 0) setViewport(prevViewport) }
+  }
+
+  const exportPdf = async () => {
+    if (!viewportRef.current) return
+    const bgColor = theme === 'dark' ? '#020617' : '#f0f9ff'
+    const noExportFilter = (node) => !node?.dataset?.noExport
+    const prevViewport = { ...viewport }
+    const pr = 2  // pixel ratio: 2x for sharpness
+    try {
+      let pdfW, pdfH, finalPng
+
+      if (tables.length === 0) {
+        pdfW = viewportSize.width
+        pdfH = viewportSize.height
+        finalPng = await toPng(viewportRef.current, { cacheBust: true, pixelRatio: pr, backgroundColor: bgColor, filter: noExportFilter })
+      } else {
+        const pad = 40
+        const minX = Math.min(...tables.map((t) => t.x)) - pad
+        const minY = Math.min(...tables.map((t) => t.y)) - pad
+        const maxX = Math.max(...tables.map((t) => t.x + t.width)) + pad
+        const maxY = Math.max(...tables.map((t) => t.y + t.height)) + pad
+        const contentW = maxX - minX
+        const contentH = maxY - minY
+
+        const { width: vpW, height: vpH } = viewportSize
+        const fitZoom = Math.min(vpW / contentW, vpH / contentH, 1.5)
+        const expX = (vpW - contentW * fitZoom) / 2 - minX * fitZoom
+        const expY = (vpH - contentH * fitZoom) / 2 - minY * fitZoom
+        setViewport({ x: expX, y: expY, zoom: fitZoom })
+        await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)))
+
+        // Capture full viewport — NO width/height override so SVG relations render correctly
+        const fullPng = await toPng(viewportRef.current, { cacheBust: true, pixelRatio: pr, backgroundColor: bgColor, filter: noExportFilter })
+
+        // Image is vpW*pr × vpH*pr pixels; content offsets must be scaled by pr too
+        const ox = Math.round(((vpW - contentW * fitZoom) / 2) * pr)
+        const oy = Math.round(((vpH - contentH * fitZoom) / 2) * pr)
+        const cW = Math.round(contentW * fitZoom * pr)
+        const cH = Math.round(contentH * fitZoom * pr)
+
+        const img = new Image()
+        img.src = fullPng
+        await new Promise((r) => { img.onload = r })
+
+        const crop = document.createElement('canvas')
+        crop.width = cW
+        crop.height = cH
+        crop.getContext('2d').drawImage(img, ox, oy, cW, cH, 0, 0, cW, cH)
+        finalPng = crop.toDataURL('image/png')
+        // PDF logical size in CSS pixels; the 2× image gives crispness
+        pdfW = Math.round(contentW * fitZoom)
+        pdfH = Math.round(contentH * fitZoom)
+      }
+
+      const orientation = pdfW >= pdfH ? 'landscape' : 'portrait'
+      const pdf = new jsPDF({ orientation, unit: 'px', format: [pdfW, pdfH], hotfixes: ['px_scaling'] })
+      pdf.addImage(finalPng, 'PNG', 0, 0, pdfW, pdfH)
+      pdf.save('diagrama.pdf')
+      pushToast('PDF exportado')
+    } catch { pushToast('No se pudo exportar PDF') }
     finally { setViewport(prevViewport) }
   }
 
@@ -602,6 +661,8 @@ export default function Editor() {
         onImportMermaid={() => { setMermaidImportType(isClassMode ? 'class' : 'er'); setMermaidDraft(isClassMode ? MERMAID_CLASS_SAMPLE : MERMAID_ER_SAMPLE); setMermaidOpen(true); setMermaidError('') }}
         onToggleMode={() => apply({ type: 'SET_DIAGRAM_TYPE', diagramType: isClassMode ? 'er' : 'class' })}
         onExportPng={exportPng}
+        onExportSvg={exportSvg}
+        onExportPdf={exportPdf}
         onExportSql={() => setSqlOpen(true)}
         onUndo={undo} onRedo={redo}
         onToggleTheme={() => apply({ type: 'SET_THEME', theme: theme === 'dark' ? 'light' : 'dark' })}
