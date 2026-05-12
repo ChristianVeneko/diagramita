@@ -10,7 +10,7 @@ import {
   ensureTargetFieldForImportedRelation,
   sanitizeDiagram,
 } from './diagram.js'
-import { MYSQL_TYPES, TYPES_WITH_LENGTH } from '../constants.js'
+import { MYSQL_TYPES, TYPES_WITH_LENGTH, HEADER_HEIGHT, ROW_HEIGHT } from '../constants.js'
 
 const MERMAID_ER_RELATION_LINE =
   /^([A-Za-z][A-Za-z0-9_-]*)\s+([|}{o]{1,2})\s*(?:--|\.\.)\s*([|}{o]{1,2})\s+([A-Za-z][A-Za-z0-9_-]*)(?:\s*:\s*(.+))?$/i
@@ -123,6 +123,7 @@ function parseMermaidClassRelationLine(rawLine) {
 function parseClassMemberLine(rawLine) {
   const source = String(rawLine || '').trim()
   if (!source) return null
+  if (/^<<[^>]*>>/.test(source)) return null
   const visMatch = source.match(/^([+\-#~])\s*(.+)$/)
   const vis = visMatch ? visMatch[1] : ''
   const content = visMatch ? visMatch[2].trim() : source
@@ -324,6 +325,7 @@ export function importMermaidClassToDiagram(mermaidText, options = {}) {
   const draftRelations = []
   let currentClassName = null
   let foundClassDiagram = false
+  let layoutDirection = 'LR'
 
   const ensureClass = (name) => {
     const safe = normalizeMermaidIdentifier(name, `Clase_${draftClasses.size + 1}`)
@@ -335,6 +337,8 @@ export function importMermaidClassToDiagram(mermaidText, options = {}) {
     const line = rawLine.replace(/%%.*$/g, '').trim()
     if (!line) continue
     if (/^classDiagram\b/i.test(line)) { foundClassDiagram = true; continue }
+    const dirMatch = line.match(/^direction\s+(TB|BT|LR|RL)\b/i)
+    if (dirMatch) { layoutDirection = dirMatch[1].toUpperCase(); continue }
     if (currentClassName) {
       if (line === '}') { currentClassName = null; continue }
       const cls = draftClasses.get(currentClassName)
@@ -400,11 +404,14 @@ export function importMermaidClassToDiagram(mermaidText, options = {}) {
     })
   }
 
-  return sanitizeDiagram({
-    tables,
-    relations,
-    diagramType: 'class',
-    theme: options.theme === 'dark' ? 'dark' : 'light',
-    snapToGrid: options.snapToGrid !== false,
-  })
+  return {
+    ...sanitizeDiagram({
+      tables,
+      relations,
+      diagramType: 'class',
+      theme: options.theme === 'dark' ? 'dark' : 'light',
+      snapToGrid: options.snapToGrid !== false,
+    }),
+    _layoutDirection: layoutDirection,
+  }
 }

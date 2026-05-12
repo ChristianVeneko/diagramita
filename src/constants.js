@@ -45,29 +45,37 @@ export const MERMAID_ER_SAMPLE = `erDiagram
   usuarios ||--o{ pedidos : tiene
   pedidos }o--o{ productos : contiene`
 
-export const MERMAID_CLASS_SAMPLE = `class Medico {
-  -int idMedico
-  -String nombre
-  -String especialidad
-  +iniciarSesion() bool
-  +getCitasHoy() List~Cita~
-}
+export const MERMAID_CLASS_SAMPLE = `classDiagram
+  direction TB
 
-class Paciente {
-  -String cedula
-  -String nombre
-  +getEdad() int
-}
+  class Medico {
+    -int idMedico
+    -String nombre
+    -String especialidad
+    +iniciarSesion() bool
+    +getCitasHoy() List
+    +agendarCita(datos) Cita
+  }
 
-class Cita {
-  -int idCita
-  -DateTime fechaHora
-  -String estado
-  +cancelar() void
-}
+  class Paciente {
+    -String cedula
+    -String nombre
+    -Date fechaNacimiento
+    +getEdad() int
+    +getCitas() List
+  }
 
-Medico   "1" -- "0..*" Cita     : agenda
-Paciente "1" -- "0..*" Cita     : tiene`
+  class Cita {
+    -int idCita
+    -DateTime fechaHora
+    -String estado
+    -String motivo
+    +confirmar() void
+    +cancelar() void
+  }
+
+  Medico "1" --> "0..*" Cita : agenda
+  Paciente "1" --> "0..*" Cita : tiene`
 
 export const SHORTCUTS = [
   { keys: 'Ctrl + Z', description: 'Deshacer' },

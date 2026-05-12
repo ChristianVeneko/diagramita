@@ -412,7 +412,7 @@ export default function Editor() {
     try {
       const parser = mermaidImportType === 'class' ? importMermaidClassToDiagram : importMermaidToDiagram
       const parsed = parser(mermaidDraft, { theme: diagram.theme, snapToGrid: diagram.snapToGrid })
-      const laid = applyAutoLayout(parsed)
+      const laid = applyAutoLayout(parsed, parsed._layoutDirection)
       reset(laid)
       setMermaidOpen(false)
       setMermaidError('')
@@ -607,7 +607,7 @@ export default function Editor() {
     try {
       const parser = tpl.type === 'class' ? importMermaidClassToDiagram : importMermaidToDiagram
       const parsed = parser(tpl.mermaid, { theme: diagram.theme, snapToGrid: diagram.snapToGrid })
-      const laid = applyAutoLayout(parsed)
+      const laid = applyAutoLayout(parsed, parsed._layoutDirection)
       reset(laid)
       setTemplatesOpen(false)
       setSelectedTableIds([])
